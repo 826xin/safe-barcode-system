@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>宗鑫保险柜有限公司条形码验证及信息填写系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
+    
+    <!-- 配置Tailwind自定义颜色 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#165DFF',
+                        secondary: '#36CFC9',
+                        accent: '#FF7D00',
+                        neutral: '#1D2129',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .shadow-soft {
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans">
+    <!-- 导航栏 -->
+    <nav class="bg-white shadow-md fixed w-full z-10">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <i class="fa fa-shield text-primary text-2xl"></i>
+                <span class="text-neutral font-bold text-lg">宗鑫保险柜</span>
+            </div>
+            <div>
+                <button id="admin-btn" class="text-primary hover:text-primary/80 flex items-center">
+                    <i class="fa fa-cog mr-1"></i>
+                    <span class="hidden md:inline">管理员入口</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主内容区 -->
+    <main class="container mx-auto px-4 pt-24 pb-16">
+        <!-- 页面标题 -->
+        <div class="text-center mb-10">
+            <h1 class="text-[clamp(1.5rem,3vw,2.2rem)] font-bold text-neutral mb-3">
+                宗鑫保险柜有限公司条形码验证及信息填写系统
+            </h1>
+            <p class="text-gray-600 max-w-2xl mx-auto">
+                请输入或扫描保险柜条形码进行验证，验证通过后可填写售后信息
+            </p>
+        </div>
+
+        <!-- 条形码验证区域 -->
+        <div class="max-w-2xl mx-auto bg-white rounded-xl shadow-soft p-6 md:p-8 mb-10 transform transition-all duration-300 hover:shadow-md">
+            <div id="validation-section">
+                <div class="mb-6">
+                    <label for="barcode" class="block text-gray-700 font-medium mb-2">条形码数字串</label>
+                    <div class="flex">
+                        <input 
+                            type="text" 
+                            id="barcode" 
+                            placeholder="请输入条形码数字" 
+                            class="flex-1 px-4 py-3 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                        >
+                        <button id="scan-btn" class="bg-primary text-white px-4 rounded-r-lg hover:bg-primary/90 transition-all">
+                            <i class="fa fa-camera mr-1"></i> 扫描
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 扫描区域 (默认隐藏) -->
+                <div id="scanner-container" class="hidden mb-6 border-2 border-dashed border-gray-300 rounded-lg p-2">
+                    <div id="scanner" class="w-full h-64 bg-gray-100 rounded overflow-hidden relative">
+                        <div class="absolute inset-0 flex items-center justify-center text-gray-500">
+                            <i class="fa fa-camera text-4xl mb-2 block"></i>
+                            <p>请将条形码对准扫描框</p>
+                        </div>
+                    </div>
+                    <div class="flex justify-center mt-3">
+                        <button id="cancel-scan" class="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300 transition-all">
+                            取消扫描
+                        </button>
+                    </div>
+                </div>
+
+                <div class="text-center">
+                    <button id="verify-btn" class="bg-primary text-white px-8 py-3 rounded-lg font-medium hover:bg-primary/90 transition-all shadow-md hover:shadow-lg">
+                        验证条形码
+                    </button>
+                </div>
+
+                <!-- 验证结果提示 (默认隐藏) -->
+                <div id="result-message" class="mt-4 text-center hidden"></div>
+            </div>
+        </div>
+
+        <!-- 信息填写表单 (默认隐藏) -->
+        <div id="form-section" class="max-w-2xl mx-auto bg-white rounded-xl shadow-soft p-6 md:p-8 hidden transform transition-all duration-300 hover:shadow-md">
+            <h2 class="text-xl font-bold text-neutral mb-6 text-center">请填写售后信息</h2>
+            
+            <form id="info-form">
+                <input type="hidden" id="validated-barcode">
+                
+                <div class="mb-4">
+                    <label for="name" class="block text-gray-700 font-medium mb-2">姓名 <span class="text-red-500">*</span></label>
+                    <input 
+                        type="text" 
+                        id="name" 
+                        required
+                        placeholder="请输入姓名" 
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                    >
+                </div>
+                
+                <div class="mb-4">
+                    <label for="phone" class="block text-gray-700 font-medium mb-2">电话 <span class="text-red-500">*</span></label>
+                    <input 
+                        type="tel" 
+                        id="phone" 
+                        required
+                        placeholder="请输入联系电话" 
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                    >
+                </div>
+                
+                <div class="mb-6">
+                    <label for="address" class="block text-gray-700 font-medium mb-2">保险柜售后地址（安装地址） <span class="text-red-500">*</span></label>
+                    <textarea 
+                        id="address" 
+                        required
+                        rows="3" 
+                        placeholder="请输入详细地址" 
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                    ></textarea>
+                </div>
+                
+                <div class="flex justify-between">
+                    <button type="button" id="back-btn" class="border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 transition-all">
+                        返回验证
+                    </button>
+                    <button type="submit" class="bg-accent text-white px-6 py-3 rounded-lg font-medium hover:bg-accent/90 transition-all shadow-md hover:shadow-lg">
+                        提交信息
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 提交成功提示 (默认隐藏) -->
+        <div id="success-message" class="max-w-2xl mx-auto bg-white rounded-xl shadow-soft p-6 md:p-8 hidden text-center">
+            <div class="text-green-500 text-5xl mb-4">
+                <i class="fa fa-check-circle"></i>
+            </div>
+            <h2 class="text-xl font-bold text-neutral mb-2">信息提交成功！</h2>
+            <p class="text-gray-600 mb-6">感谢您的配合，我们将尽快安排售后事宜</p>
+            <button id="restart-btn" class="bg-primary text-white px-6 py-3 rounded-lg font-medium hover:bg-primary/90 transition-all">
+                返回首页
+            </button>
+        </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="bg-white border-t border-gray-200 py-6">
+        <div class="container mx-auto px-4 text-center text-gray-600">
+            <p>© 2023 宗鑫保险柜有限公司 版权所有</p>
+            <p class="mt-1 text-sm">服务热线：13583440716</p>
+        </div>
+    </footer>
+
+    <!-- 管理员登录弹窗 -->
+    <div id="admin-login-modal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center">
+        <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+            <h3 class="text-xl font-bold text-neutral mb-4">管理员登录</h3>
+            <div class="mb-4">
+                <label for="admin-password" class="block text-gray-700 font-medium mb-2">请输入管理员密码</label>
+                <input 
+                    type="password" 
+                    id="admin-password" 
+                    placeholder="输入管理密码" 
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                >
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button id="cancel-login" class="border border-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-50 transition-all">
+                    取消
+                </button>
+                <button id="submit-login" class="bg-primary text-white px-4 py-2 rounded hover:bg-primary/90 transition-all">
+                    登录
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 管理员页面 -->
+    <div id="admin-page" class="fixed inset-0 bg-white z-50 transform translate-x-full transition-transform duration-300 overflow-y-auto">
+        <div class="container mx-auto px-4 py-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-neutral">管理员中心</h2>
+                <button id="close-admin" class="text-gray-500 hover:text-gray-700 p-2">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <!-- 条形码管理 -->
+            <div class="bg-gray-50 rounded-lg p-6 mb-8">
+                <h3 class="text-lg font-semibold mb-4 flex items-center">
+                    <i class="fa fa-barcode text-primary mr-2"></i>条形码管理
+                </h3>
+                
+                <div class="flex mb-6">
+                    <input 
+                        type="text" 
+                        id="new-barcode" 
+                        placeholder="输入新的条形码数字串" 
+                        class="flex-1 px-4 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                    >
+                    <button id="add-barcode" class="bg-primary text-white px-4 py-2 rounded-r-lg hover:bg-primary/90 transition-all">
+                        添加条形码
+                    </button>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white rounded-lg overflow-hidden">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="py-3 px-4 text-left text-gray-700 font-medium">条形码</th>
+                                <th class="py-3 px-4 text-left text-gray-700 font-medium">添加时间</th>
+                                <th class="py-3 px-4 text-center text-gray-700 font-medium">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="barcode-list">
+                            <tr class="text-center">
+                                <td colspan="3" class="py-6 text-gray-500">暂无条形码数据</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- 客户信息管理 -->
+            <div class="bg-gray-50 rounded-lg p-6">
+                <h3 class="text-lg font-semibold mb-4 flex items-center">
+                    <i class="fa fa-database text-primary mr-2"></i>客户信息管理
+                </h3>
+                
+                <div class="mb-6 flex justify-between items-center">
+                    <p class="text-gray-600"><span id="customer-count">0</span> 条客户信息</p>
+                    <button id="export-data" class="bg-accent text-white px-4 py-2 rounded-lg hover:bg-accent/90 transition-all flex items-center">
+                        <i class="fa fa-download mr-1"></i> 导出所有数据
+                    </button>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white rounded-lg overflow-hidden">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="py-3 px-4 text-left text-gray-700 font-medium">条形码</th>
+                                <th class="py-3 px-4 text-left text-gray-700 font-medium">姓名</th>
+                                <th class="py-3 px-4 text-left text-gray-700 font-medium">电话</th>
+                                <th class="py-3 px-4 text-left text-gray-700 font-medium">地址</th>
+                                <th class="py-3 px-4 text-left text-gray-700 font-medium">提交时间</th>
+                            </tr>
+                        </thead>
+                        <tbody id="customer-list">
+                            <tr class="text-center">
+                                <td colspan="5" class="py-6 text-gray-500">暂无客户信息</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 管理员密码 - 请修改为您自己的密码
+        const ADMIN_PASSWORD = "zxbxg@0512"; // 务必修改此密码
+        
+        // 数据存储
+        let barcodeDatabase = JSON.parse(localStorage.getItem('barcodeDatabase')) || [];
+        let customerData = JSON.parse(localStorage.getItem('customerData')) || [];
+        let isAdminLoggedIn = false;
+
+        // DOM元素
+        const barcodeInput = document.getElementById('barcode');
+        const verifyBtn = document.getElementById('verify-btn');
+        const scanBtn = document.getElementById('scan-btn');
+        const cancelScanBtn = document.getElementById('cancel-scan');
+        const scannerContainer = document.getElementById('scanner-container');
+        const resultMessage = document.getElementById('result-message');
+        const validationSection = document.getElementById('validation-section');
+        const formSection = document.getElementById('form-section');
+        const infoForm = document.getElementById('info-form');
+        const validatedBarcodeInput = document.getElementById('validated-barcode');
+        const backBtn = document.getElementById('back-btn');
+        const successMessage = document.getElementById('success-message');
+        const restartBtn = document.getElementById('restart-btn');
+        const adminBtn = document.getElementById('admin-btn');
+        const adminPage = document.getElementById('admin-page');
+        const adminLoginModal = document.getElementById('admin-login-modal');
+        const adminPasswordInput = document.getElementById('admin-password');
+        const submitLoginBtn = document.getElementById('submit-login');
+        const cancelLoginBtn = document.getElementById('cancel-login');
+        const closeAdminBtn = document.getElementById('close-admin');
+        const newBarcodeInput = document.getElementById('new-barcode');
+        const addBarcodeBtn = document.getElementById('add-barcode');
+        const barcodeList = document.getElementById('barcode-list');
+        const customerList = document.getElementById('customer-list');
+        const customerCount = document.getElementById('customer-count');
+        const exportDataBtn = document.getElementById('export-data');
+
+        // 初始化页面
+        function init() {
+            updateBarcodeList();
+            updateCustomerList();
+            checkFirstVisit();
+        }
+
+        // 验证条形码
+        verifyBtn.addEventListener('click', () => {
+            const barcode = barcodeInput.value.trim();
+            if (!barcode) {
+                showMessage('请输入条形码数字串', 'error');
+                return;
+            }
+
+            // 检查条形码是否在数据库中
+            const isValid = barcodeDatabase.some(item => item.code === barcode);
+            
+            if (isValid) {
+                showMessage('条形码验证通过，即将跳转至信息填写页面', 'success');
+                // 延迟切换到表单页面
+                setTimeout(() => {
+                    validatedBarcodeInput.value = barcode;
+                    validationSection.classList.add('hidden');
+                    formSection.classList.remove('hidden');
+                    formSection.scrollIntoView({ behavior: 'smooth' });
+                }, 1000);
+            } else {
+                showMessage('条形码信息输入不正确，请检查后再次验证', 'error');
+            }
+        });
+
+        // 扫描功能
+        scanBtn.addEventListener('click', () => {
+            barcodeInput.classList.add('hidden');
+            scanBtn.classList.add('hidden');
+            scannerContainer.classList.remove('hidden');
+            
+            // 初始化扫描器
+            Quagga.init({
+                inputStream: {
+                    name: "Live",
+                    type: "LiveStream",
+                    target: document.querySelector('#scanner'),
+                    constraints: {
+                        width: 480,
+                        height: 320,
+                        facingMode: "environment"
+                    },
+                },
+                decoder: {
+                    readers: ["code_128_reader", "ean_reader", "ean_8_reader", "code_39_reader"]
+                }
+            }, (err) => {
+                if (err) {
+                    console.error(err);
+                    alert('扫描功能初始化失败，请使用手动输入');
+                    cancelScan();
+                    return;
+                }
+                Quagga.start();
+            });
+
+            // 检测到条形码时
+            Quagga.onDetected(result => {
+                if (result && result.codeResult) {
+                    barcodeInput.value = result.codeResult.code;
+                    Quagga.stop();
+                    cancelScan();
+                    verifyBtn.click(); // 自动验证
+                }
+            });
+        });
+
+        // 取消扫描
+        function cancelScan() {
+            if (Quagga) Quagga.stop();
+            scannerContainer.classList.add('hidden');
+            barcodeInput.classList.remove('hidden');
+            scanBtn.classList.remove('hidden');
+        }
+        cancelScanBtn.addEventListener('click', cancelScan);
+
+        // 返回验证页面
+        backBtn.addEventListener('click', () => {
+            formSection.classList.add('hidden');
+            validationSection.classList.remove('hidden');
+            barcodeInput.value = '';
+            resultMessage.classList.add('hidden');
+            validationSection.scrollIntoView({ behavior: 'smooth' });
+        });
+
+        // 提交信息表单
+        infoForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const data = {
+                barcode: validatedBarcodeInput.value,
+                name: document.getElementById('name').value,
+                phone: document.getElementById('phone').value,
+                address: document.getElementById('address').value,
+                timestamp: new Date().toISOString()
+            };
+            
+            // 保存提交的数据
+            customerData.push(data);
+            localStorage.setItem('customerData', JSON.stringify(customerData));
+            
+            // 更新客户列表（管理员页面）
+            updateCustomerList();
+            
+            // 显示成功消息
+            formSection.classList.add('hidden');
+            successMessage.classList.remove('hidden');
+            successMessage.scrollIntoView({ behavior: 'smooth' });
+        });
+
+        // 重新开始
+        restartBtn.addEventListener('click', () => {
+            successMessage.classList.add('hidden');
+            validationSection.classList.remove('hidden');
+            barcodeInput.value = '';
+            document.getElementById('name').value = '';
+            document.getElementById('phone').value = '';
+            document.getElementById('address').value = '';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        // 显示消息
+        function showMessage(text, type) {
+            resultMessage.textContent = text;
+            resultMessage.classList.remove('hidden', 'text-green-500', 'text-red-500');
+            
+            if (type === 'success') {
+                resultMessage.classList.add('text-green-500');
+            } else {
+                resultMessage.classList.add('text-red-500');
+            }
+        }
+
+        // 管理员登录相关
+        adminBtn.addEventListener('click', () => {
+            if (isAdminLoggedIn) {
+                adminPage.classList.remove('translate-x-full');
+            } else {
+                // 显示登录弹窗
+                adminLoginModal.classList.remove('hidden');
+                adminLoginModal.classList.add('flex');
+                adminPasswordInput.focus();
+            }
+        });
+
+        // 处理管理员登录
+        submitLoginBtn.addEventListener('click', () => {
+            const password = adminPasswordInput.value.trim();
+            if (password === ADMIN_PASSWORD) {
+                isAdminLoggedIn = true;
+                adminLoginModal.classList.add('hidden');
+                adminLoginModal.classList.remove('flex');
+                adminPasswordInput.value = '';
+                adminPage.classList.remove('translate-x-full');
+            } else {
+                alert('密码错误，请重试');
+                adminPasswordInput.value = '';
+                adminPasswordInput.focus();
+            }
+        });
+
+        // 取消登录
+        cancelLoginBtn.addEventListener('click', () => {
+            adminLoginModal.classList.add('hidden');
+            adminLoginModal.classList.remove('flex');
+            adminPasswordInput.value = '';
+        });
+
+        // 关闭管理页面
+        closeAdminBtn.addEventListener('click', () => {
+            adminPage.classList.add('translate-x-full');
+        });
+
+        // 添加新条形码
+        addBarcodeBtn.addEventListener('click', () => {
+            const newBarcode = newBarcodeInput.value.trim();
+            if (!newBarcode) {
+                alert('请输入条形码数字串');
+                return;
+            }
+            
+            // 检查是否已存在
+            const exists = barcodeDatabase.some(item => item.code === newBarcode);
+            if (exists) {
+                alert('该条形码已存在');
+                return;
+            }
+            
+            // 添加到数据库
+            barcodeDatabase.push({
+                code: newBarcode,
+                addedAt: new Date().toISOString()
+            });
+            
+            // 保存到本地存储
+            localStorage.setItem('barcodeDatabase', JSON.stringify(barcodeDatabase));
+            
+            // 更新列表
+            updateBarcodeList();
+            
+            // 清空输入
+            newBarcodeInput.value = '';
+            newBarcodeInput.focus();
+        });
+
+        // 更新条形码列表
+        function updateBarcodeList() {
+            if (barcodeDatabase.length === 0) {
+                barcodeList.innerHTML = `
+                    <tr class="text-center">
+                        <td colspan="3" class="py-6 text-gray-500">暂无条形码数据</td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            // 按添加时间排序（最新的在前）
+            const sortedBarcodes = [...barcodeDatabase].sort((a, b) => 
+                new Date(b.addedAt) - new Date(a.addedAt)
+            );
+            
+            barcodeList.innerHTML = sortedBarcodes.map((item) => `
+                <tr class="hover:bg-gray-50 transition-all">
+                    <td class="py-3 px-4">${item.code}</td>
+                    <td class="py-3 px-4 text-gray-600">${formatDate(item.addedAt)}</td>
+                    <td class="py-3 px-4 text-center">
+                        <button class="text-red-500 hover:text-red-700 transition-all delete-btn" data-code="${item.code}">
+                            <i class="fa fa-trash"></i> 删除
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+            
+            // 添加删除事件监听
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const code = e.currentTarget.getAttribute('data-code');
+                    if (confirm(`确定要删除条形码 ${code} 吗？`)) {
+                        // 从数据库中删除
+                        barcodeDatabase = barcodeDatabase.filter(item => item.code !== code);
+                        // 保存到本地存储
+                        localStorage.setItem('barcodeDatabase', JSON.stringify(barcodeDatabase));
+                        // 更新列表
+                        updateBarcodeList();
+                    }
+                });
+            });
+        }
+
+        // 更新客户信息列表
+        function updateCustomerList() {
+            customerCount.textContent = customerData.length;
+            
+            if (customerData.length === 0) {
+                customerList.innerHTML = `
+                    <tr class="text-center">
+                        <td colspan="5" class="py-6 text-gray-500">暂无客户信息</td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            // 按提交时间排序（最新的在前）
+            const sortedCustomers = [...customerData].sort((a, b) => 
+                new Date(b.timestamp) - new Date(a.timestamp)
+            );
+            
+            customerList.innerHTML = sortedCustomers.map((item) => `
+                <tr class="hover:bg-gray-50 transition-all">
+                    <td class="py-3 px-4">${item.barcode}</td>
+                    <td class="py-3 px-4">${item.name}</td>
+                    <td class="py-3 px-4">${item.phone}</td>
+                    <td class="py-3 px-4">${item.address}</td>
+                    <td class="py-3 px-4 text-gray-600">${formatDate(item.timestamp)}</td>
+                </tr>
+            `).join('');
+        }
+
+        // 导出数据功能
+        exportDataBtn.addEventListener('click', () => {
+            if (customerData.length === 0) {
+                alert('暂无客户数据可导出');
+                return;
+            }
+            
+            // 转换为CSV格式
+            let csvContent = "data:text/csv;charset=utf-8,";
+            // 添加表头
+            csvContent += "条形码,姓名,电话,地址,提交时间\n";
+            
+            // 添加数据行
+            customerData.forEach(item => {
+                const row = `"${item.barcode}","${item.name}","${item.phone}","${item.address}","${formatDate(item.timestamp)}"\n`;
+                csvContent += row;
+            });
+            
+            // 创建下载链接
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `宗鑫保险柜客户信息_${new Date().toLocaleDateString()}.csv`);
+            document.body.appendChild(link);
+            
+            // 触发下载
+            link.click();
+            document.body.removeChild(link);
+        });
+
+        // 格式化日期
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+        }
+
+        // 首次使用提示
+        function checkFirstVisit() {
+            if (localStorage.getItem('firstVisit') !== 'false') {
+                setTimeout(() => {
+                    alert('欢迎使用宗鑫保险柜条形码验证系统！\n\n1. 请点击右上角"管理员入口"，使用默认密码"admin123"登录\n2. 建议登录后立即修改管理员密码以确保安全\n3. 在管理员中心可以添加/删除条形码，查看和导出客户信息');
+                    localStorage.setItem('firstVisit', 'false');
+                }, 1000);
+            }
+        }
+
+        // 支持回车键验证
+        barcodeInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                verifyBtn.click();
+            }
+        });
+
+        // 密码框支持回车键登录
+        adminPasswordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                submitLoginBtn.click();
+            }
+        });
+
+        // 初始化
+        init();
+    </script>
+</body>
+</html>
+    
